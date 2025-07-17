@@ -18,36 +18,79 @@ from utils.gdrive import upload_to_gdrive
 if "initialized" not in st.session_state:
     st.session_state.initialized = True
     copy_captcha_table()
-st.set_page_config(page_title="Captcha Correction", layout="wide")
+
+# Initialize session state vars
+if "user_input" not in st.session_state:
+    st.session_state.user_input = ""
+if "clear_input" not in st.session_state:
+    st.session_state.clear_input = False
+if "show_dialog" not in st.session_state:
+    st.session_state.show_dialog = True
+if "username_error" not in st.session_state:
+    st.session_state.username_error = False
+if "username_submitted" not in st.session_state:
+    st.session_state.username_submitted = False
+if "username_validated" not in st.session_state:
+    st.session_state.username_validated = False
+if "active_dialog" not in st.session_state:
+    st.session_state.active_dialog = None
+
+st.set_page_config(page_title="Captcha Correction")
 
 st.title("🧠 CAPTCHA Correction Tool")
 
-# --- Backup Button ---
-if st.sidebar.button("💾 Backup Database"):
-    try:
-        upload_to_gdrive()
-        st.sidebar.success(f"Backup created!")
-    except Exception as e:
-        st.sidebar.error(f"❌ Backup failed: {e}")
+@st.dialog("📝 Update Corrected Text")
+def update_dialog(captcha_id, current_text):
+    st.markdown(f"**Captcha ID:** {captcha_id}")
+    new_text = st.text_input("Enter new corrected text", value=current_text, key=f"new_text_{captcha_id}")
 
-# Sidebar history
-st.sidebar.header("📝 Correction History")
+    if st.button("✅ Submit", key=f"submit_{captcha_id}"):
+        info = {
+                    "captcha_id": captcha_id,
+                    "corrected_text": new_text,
+                    "status": 2,
+                    "updated_by": st.session_state.get("username_input", "unknown_user")
+                }
+        update_corrected_text(info)
+        st.success("Updated successfully.")
+        st.session_state.active_dialog = None
+        st.rerun()
 
-limit = 10
-page = st.sidebar.number_input("Page", min_value=1, step=1)
-offset = (page - 1) * limit
-
-history_df = get_history(offset, limit)
-
-for _, row in history_df.iterrows():
-    with st.sidebar.expander(f"Captcha ID: {row['id']}", expanded=True):
+with st.sidebar:
+    # --- Backup Button ---
+    if st.sidebar.button("💾 Backup Database"):
         try:
-            img_bytes = decode_image(row['img'])
-            st.image(img_bytes, width=150)
+            upload_to_gdrive()
+            st.sidebar.success(f"Backup created!")
         except Exception as e:
-            st.error(f"⚠️ Failed to decode image: {e}")
+            st.sidebar.error(f"❌ Backup failed: {e}")
 
-        st.write(f"Corrected Text: `{row['corrected_text']}`")
+    # Sidebar history
+    st.sidebar.header("📝 Correction History")
+
+    limit = 10
+    page = st.sidebar.number_input("Page", min_value=1, step=1)
+    offset = (page - 1) * limit
+
+    history_df = get_history(offset, limit)
+
+    # Display the sidebar history
+    for _, row in history_df.iterrows():
+        with st.sidebar.expander(f"Captcha ID: {row['id']}", expanded=True):
+            try:
+                img_bytes = decode_image(row['img'])
+                st.image(img_bytes, width=150)
+            except Exception as e:
+                st.error(f"⚠️ Failed to decode image: {e}")
+
+            st.write(f"Corrected Text: `{row['corrected_text']}`")
+
+            if st.button("✏️ Update", key=f"update_button_{row['id']}"):
+                st.session_state.active_dialog = row['id']
+
+            # Trigger dialog if this ID is active
+            if st.session_state.active_dialog == row['id']:
+                update_dialog(row['id'], row['corrected_text'])
         
 
 # Main section
@@ -63,20 +106,6 @@ if "current_record" not in st.session_state or st.session_state.get("clear_input
         st.session_state.current_record = None
 
 record = st.session_state.current_record
-
-# Initialize session state vars
-if "user_input" not in st.session_state:
-    st.session_state.user_input = ""
-if "clear_input" not in st.session_state:
-    st.session_state.clear_input = False
-if "show_dialog" not in st.session_state:
-    st.session_state.show_dialog = True
-if "username_error" not in st.session_state:
-    st.session_state.username_error = False
-if "username_submitted" not in st.session_state:
-    st.session_state.username_submitted = False
-if "username_validated" not in st.session_state:
-    st.session_state.username_validated = False
 
 # Clear input *before* widget is instantiated
 if st.session_state.clear_input:
