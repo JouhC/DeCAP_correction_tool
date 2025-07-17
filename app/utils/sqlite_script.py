@@ -8,7 +8,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 DB_FILE = os.path.join(Path(__file__).resolve().parents[2],"data","giftcode_system.db")
-filename = os.environ.get("GOOGLE_DRIVE_FILE_NAME")
+filename = os.getenv("GOOGLE_DRIVE_FILE_NAME")
+logger.info(filename)
 WORKING_COPY_DB = os.path.join(Path(__file__).resolve().parents[2],"data",filename)
 
 def get_connection():

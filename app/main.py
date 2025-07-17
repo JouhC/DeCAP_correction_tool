@@ -1,14 +1,18 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 import logging
 import streamlit as st
-import pandas as pd
-from utils.sqlite_script import copy_captcha_table, get_next_uncorrected, update_corrected_text, get_history
-from utils.utils import decode_image
 import time
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+
+from utils.sqlite_script import copy_captcha_table, get_next_uncorrected, update_corrected_text, get_history
+from utils.utils import decode_image
+from utils.gdrive import upload_to_gdrive
 
 # --- UI Starts Here ---
 if "initialized" not in st.session_state:
@@ -17,6 +21,14 @@ if "initialized" not in st.session_state:
 st.set_page_config(page_title="Captcha Correction", layout="wide")
 
 st.title("🧠 CAPTCHA Correction Tool")
+
+# --- Backup Button ---
+if st.sidebar.button("💾 Backup Database"):
+    try:
+        upload_to_gdrive()
+        st.sidebar.success(f"Backup created!")
+    except Exception as e:
+        st.sidebar.error(f"❌ Backup failed: {e}")
 
 # Sidebar history
 st.sidebar.header("📝 Correction History")
