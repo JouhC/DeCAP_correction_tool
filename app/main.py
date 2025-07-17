@@ -2,7 +2,8 @@ import logging
 import streamlit as st
 import pandas as pd
 from utils.sqlite_script import copy_captcha_table, get_next_uncorrected, update_corrected_text, get_history
-from utils.utils import decode_image, only_decode
+from utils.utils import decode_image
+import time
 
 logging.basicConfig(
     level=logging.INFO,
@@ -56,11 +57,57 @@ if "user_input" not in st.session_state:
     st.session_state.user_input = ""
 if "clear_input" not in st.session_state:
     st.session_state.clear_input = False
+if "show_dialog" not in st.session_state:
+    st.session_state.show_dialog = True
+if "username_error" not in st.session_state:
+    st.session_state.username_error = False
+if "username_submitted" not in st.session_state:
+    st.session_state.username_submitted = False
+if "username_validated" not in st.session_state:
+    st.session_state.username_validated = False
 
 # Clear input *before* widget is instantiated
 if st.session_state.clear_input:
     st.session_state.user_input = ""
     st.session_state.clear_input = False
+
+def handle_submit():
+    username = st.session_state.get("username_input", "").strip()
+    if username == "":
+        st.session_state.username_error = True
+    else:
+        st.session_state.username_error = False
+        st.session_state.username_validated = True  # Just flag it
+        # Do NOT call st.rerun() here
+
+# Dialog
+@st.dialog("Username")
+def enter_username():
+    with st.form("dialog_form"):
+        st.text_input("Enter your username:", key="username_input")
+
+        if st.form_submit_button("Submit"):
+            username = st.session_state.get("username_input", "").strip()
+            if username == "":
+                st.session_state.username_error = True
+            else:
+                st.session_state.username_error = False
+                st.session_state.username_validated = True  # Just flag it
+        
+        # Handle auto-close logic (run outside the callback)
+        if st.session_state.username_validated:
+            st.session_state.username_validated = False  # reset for next time
+            st.toast("Closing dialog in 2 seconds...", icon="⏳")
+            time.sleep(2)
+            st.session_state.show_dialog = False
+            st.rerun()
+
+        if st.session_state.username_error:
+            st.error("Please input your username to proceed.")
+
+# Trigger dialog
+if st.session_state.show_dialog:
+    enter_username()
 
 if record:
     captcha_id = record["captcha_id"]
@@ -81,7 +128,7 @@ if record:
                     "captcha_id": captcha_id,
                     "corrected_text": user_input,
                     "status": 2,
-                    "updated_by": st.session_state.get("username", "unknown_user")
+                    "updated_by": st.session_state.get("username_input", "unknown_user")
                 }
                 update_corrected_text(info)
                 st.session_state.clear_input = True
