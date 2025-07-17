@@ -15,6 +15,7 @@ FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
 FILENAME = os.getenv("GOOGLE_DRIVE_FILE_NAME")
 FILE_PATH = os.path.join(Path(__file__).resolve().parents[2],"data",FILENAME)
 CONFIG_PATH = os.path.join(Path(__file__).resolve().parents[2], "config.json")
+TEMP_PATH = os.path.join(Path(__file__).resolve().parents[2],"data","temp.db")
 
 def extract_filenames(drive_service):
     # Query files in the folder
@@ -69,6 +70,36 @@ def upload_to_gdrive():
 
     logger.info(f"Uploaded to Folder! File ID: {uploaded_file.get('id')}")
     return
+
+def download_from_gdrive():
+    # Create credentials
+    credentials = service_account.Credentials.from_service_account_info(GDRIVE_KEY)
+
+    # Build Drive API service
+    drive_service = build('drive', 'v3', credentials=credentials)
+
+    files = extract_filenames(drive_service)
+    
+    file_id = None
+    for file in files:
+        if file['name'] == FILENAME:
+            logger.info(f"File {FILENAME} already exists in the folder.")
+            file_id = file['id']
+            break
+
+    if file_id:
+        request = drive_service.files().get_media(fileId=file_id)
+        with open(TEMP_PATH, 'wb') as fh:
+            downloader = MediaFileUpload(request, chunksize=2048, resumable=True)
+            done = False
+            while done is False:
+                status, done = downloader.next_chunk()
+                logger.info(f"Download {int(status.progress() * 100)}% complete.")
+        logger.info(f"Downloaded file to {FILE_PATH}")
+    else:
+        logger.info(f"File {FILENAME} not found in the folder.")
+
+def sync_files():
 
 
 def main():

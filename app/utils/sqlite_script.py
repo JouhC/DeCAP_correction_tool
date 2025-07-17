@@ -12,8 +12,8 @@ filename = os.getenv("GOOGLE_DRIVE_FILE_NAME")
 logger.info(filename)
 WORKING_COPY_DB = os.path.join(Path(__file__).resolve().parents[2],"data",filename)
 
-def get_connection():
-    return sqlite3.connect(WORKING_COPY_DB)
+def get_connection(db_file=WORKING_COPY_DB):
+    return sqlite3.connect(db_file)
 
 def copy_captcha_table():
     conn = sqlite3.connect(DB_FILE)
@@ -96,6 +96,21 @@ def update_corrected_text(info):
         logger.info(f"An error occurred: {e}")
     finally:
         return None
+    
+def check_latest(db_file):
+    try:
+        with get_connection(db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='captchas'")
+            if cursor.fetchone() is None:
+                logger.info("Table 'captchas' does not exist in the database.")
+                return False
+            else:
+                logger.info("Table 'captchas' exists in the database.")
+                return True
+    except Exception as e:
+        logger.info(f"An error occurred while checking the latest: {e}")
+        return False
 
 if __name__ == "__main__":
     copy_captcha_table()

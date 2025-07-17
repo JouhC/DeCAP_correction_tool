@@ -58,7 +58,7 @@ def update_dialog(captcha_id, current_text):
 
 with st.sidebar:
     # --- Backup Button ---
-    if st.sidebar.button("💾 Backup Database"):
+    if st.sidebar.button("💾 Sync Database"):
         try:
             upload_to_gdrive()
             st.sidebar.success(f"Backup created!")
