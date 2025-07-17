@@ -8,3 +8,8 @@ wheels/
 
 # Virtual environments
 .venv
+
+key.json
+
+.env
+.env
